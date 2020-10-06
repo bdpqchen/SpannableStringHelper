@@ -1,0 +1,3 @@
+include ':span-helper'
+include ':app'
+rootProject.name = "SpannableStringHelper"
