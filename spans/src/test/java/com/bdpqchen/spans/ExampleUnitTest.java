@@ -1,4 +1,4 @@
-package com.bdpqchen.span_helper;
+package com.bdpqchen.spans;
 
 import org.junit.Test;
 
