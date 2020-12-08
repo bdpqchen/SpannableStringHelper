@@ -10,25 +10,29 @@ import android.graphics.MaskFilter;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.text.SpannableString;
-import android.text.SpannableStringBuilder;
+import android.text.method.LinkMovementMethod;
 import android.text.style.AbsoluteSizeSpan;
 import android.text.style.BackgroundColorSpan;
-import android.text.style.ClickableSpan;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.ImageSpan;
 import android.text.style.MaskFilterSpan;
 import android.text.style.RelativeSizeSpan;
+import android.text.style.StrikethroughSpan;
 import android.text.style.StyleSpan;
 import android.text.style.SubscriptSpan;
 import android.text.style.SuggestionSpan;
 import android.text.style.SuperscriptSpan;
+import android.text.style.TextAppearanceSpan;
 import android.text.style.TypefaceSpan;
 import android.text.style.URLSpan;
 import android.text.style.UnderlineSpan;
 import android.util.Pair;
 import android.view.View;
+import android.widget.TextView;
 import androidx.annotation.ColorInt;
 import androidx.annotation.NonNull;
+
+import com.bdpqchen.spans.customspan.CustomClickableSpan;
 
 public final class Spans {
 
@@ -41,7 +45,6 @@ public final class Spans {
 
     private final String mText;
     private List<Pair<Integer, Integer>> mRanges = new ArrayList<>();
-    private SpannableStringBuilder ssb;
 
     Spany(@NonNull String text) {
       this.mText = text;
@@ -63,13 +66,17 @@ public final class Spans {
       mRanges.clear();
     }
 
-    /*public*/ Spany atStart() {
-      mRanges.add(Pair.create(0, 0));
+    public Spany atStart(int position) {
+      mRanges.add(Pair.create(0, position));
       return this;
     }
 
-    /*public*/ Spany atEnd() {
-      // todo range set
+    public Spany atEnd(String spanTxt) {
+      return atEnd(mText.lastIndexOf(spanTxt));
+    }
+
+    public Spany atEnd(int position) {
+      mRanges.add(Pair.create(position, mText.length()));
       return this;
     }
 
@@ -102,6 +109,13 @@ public final class Spans {
       return this;
     }
 
+    public Spany ranges(int... pairs) {
+      for (int i = 0; i < pairs.length - 1; i += 2) {
+        mRanges.add(Pair.create(pairs[i], pairs[i + 1]));
+      }
+      return this;
+    }
+
     public Spany between(@NonNull String before, @NonNull String after) {
       int startIndex = mText.indexOf(before) + before.length() + 1;
       int endIndex = mText.lastIndexOf(after) - 1;
@@ -110,27 +124,36 @@ public final class Spans {
     }
 
     public Spany foreground(@ColorInt int color) {
-      setSpan(new ForegroundColorSpan(color));
+      setSpan(() -> new ForegroundColorSpan(color));
       return this;
     }
 
     public Spany background(@ColorInt int color) {
-      setSpan(new BackgroundColorSpan(color));
+      setSpan(() -> new BackgroundColorSpan(color));
       return this;
     }
 
     public Spany underline() {
-      setSpan(new UnderlineSpan());
+      setSpan(UnderlineSpan::new);
       return this;
     }
 
+    public Spany strikeThrough() {
+      setSpan(StrikethroughSpan::new);
+      return this;
+    }
+
+    /**
+     * NOTE: your textview need to be set
+     * `setMovementMethod(LinkMovementMethod.getInstance());`
+     */
     public Spany url(@NonNull String url) {
-      setSpan(new URLSpan(url));
+      setSpan(() -> new URLSpan(url));
       return this;
     }
 
     public Spany suggestion(Context context, String[] string) {
-      setSpan(new SuggestionSpan(context, string, 0));
+      setSpan(() -> new SuggestionSpan(context, string, 0));
       return this;
     }
 
@@ -150,66 +173,97 @@ public final class Spans {
     }
 
     public Spany subscript() {
-      setSpan(new SubscriptSpan());
+      setSpan(SubscriptSpan::new);
       return this;
     }
 
     public Spany superscript() {
-      setSpan(new SuperscriptSpan());
+      new SuperscriptSpan();
+      setSpan(SuperscriptSpan::new);
       return this;
     }
 
     public Spany font(String fontFamily) {
-      setSpan(new TypefaceSpan(fontFamily));
+      setSpan(() -> new TypefaceSpan(fontFamily));
       return this;
     }
 
     public Spany mask(MaskFilter maskFilter) {
-      setSpan(new MaskFilterSpan(maskFilter));
+      setSpan(() -> new MaskFilterSpan(maskFilter));
       return this;
     }
 
-    /*public */Spany image(Drawable drawable) {
+    /*public*/ Spany image(Drawable drawable) {
       // TODO: 2020/12/3 start, end, resource
       setSpan(new ImageSpan(drawable));
       return this;
     }
 
-    public Spany click(final View.OnClickListener onClickListener) {
-      setSpan(new ClickableSpan() {
+    public Spany click(@NonNull final View.OnClickListener onClickListener) {
+      setClickable(onClickListener, false);
+      return this;
+    }
+
+    public Spany clickNoUnderline(@NonNull final View.OnClickListener onClickListener) {
+      setClickable(onClickListener, true);
+      return this;
+    }
+
+    public void setClickable(View.OnClickListener onClickListener, boolean withoutUnderline) {
+      setSpan(() -> new CustomClickableSpan(withoutUnderline) {
         @Override
         public void onClick(@NonNull View widget) {
           onClickListener.onClick(widget);
         }
       });
-      return this;
+    }
+
+    public void setClickable(View.OnClickListener onClickListener, boolean withoutUnderline,
+        TextView textViewSetMovementMethod) {
+      textViewSetMovementMethod.setMovementMethod(LinkMovementMethod.getInstance());
+      setClickable(onClickListener, withoutUnderline);
     }
 
     public Spany size(int sizeInDp) {
-      setSpan(new AbsoluteSizeSpan(sizeInDp, true));
+      setSpan(() -> new AbsoluteSizeSpan(sizeInDp, true));
       return this;
     }
 
     public Spany size(float relativeSize) {
-      setSpan(new RelativeSizeSpan(relativeSize));
+      for (Pair<Integer, Integer> r : mRanges) {
+        setSpan(new RelativeSizeSpan(relativeSize), r.first, r.second);
+      }
+      return this;
+    }
+
+    public Spany appearance(Context context, int appearance) {
+      setSpan(() -> new TextAppearanceSpan(context, appearance));
       return this;
     }
 
     void setStyleSpan(int style) {
-      setSpan(new StyleSpan(style));
+      setSpan(() -> new StyleSpan(style));
     }
 
-//  public void setSpan(Object whatSpan) { }
-
-    void setSpan(Object what) {
+    public void setSpan(Generator generator) {
       for (Pair<Integer, Integer> range : mRanges) {
-        setSpan(what, range.first, range.second, FLAGS);
+        setSpan(generator.create(), range.first, range.second);
       }
     }
 
-    void setSpan(Object what, int start, int end, int flags) {
+    private interface Generator {
+      Object create();
+    }
+
+    public void setSpan(Object what) {
+      for (Pair<Integer, Integer> range : mRanges) {
+        setSpan(what, range.first, range.second);
+      }
+    }
+
+    void setSpan(Object what, int start, int end) {
       if (rangeAvailable()) {
-        ss.setSpan(what, start, end, flags);
+        ss.setSpan(what, start, end, FLAGS);
       }
     }
 
@@ -222,11 +276,5 @@ public final class Spans {
     public SpannableString build() {
       return ss;
     }
-
-    /*public*/ SpannableStringBuilder builder() {
-      return ssb;
-    }
-
   }
-
 }
