@@ -1,3 +1,3 @@
 include ':spans'
-include ':app'
+include ':sample'
 rootProject.name = "SpannableStringHelper"
