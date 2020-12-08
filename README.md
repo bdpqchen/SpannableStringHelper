@@ -1,4 +1,6 @@
-![Screenshot_1.png](Screenshot_1.png)
+### Screenshot
+<img src="./Screenshot_1.png" width = "270" height = "480" />
+
 ### Features
 - [x] BackGround
 - [x] Foreground
